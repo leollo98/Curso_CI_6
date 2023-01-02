@@ -1,0 +1,59 @@
+name: Load Test
+
+on:
+  workflow_call:
+
+jobs:
+
+  loadtest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: configurando credenciais da AWS
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.ID_CHAVE_ACESSO }}
+        aws-secret-access-key: ${{ secrets.CHAVE_SECRETA }}
+        aws-region: us-east-2
+        
+    - run: git clone https://github.com/leollo98/Infra_CI
+    
+    - name: HashiCorp - Setup Terraform
+      uses: hashicorp/setup-terraform@v2.0.3
+      
+    - run: terraform -chdir=Infra_CI/env/Homolog init
+    
+    - run: terraform -chdir=Infra_CI/env/Homolog destroy -auto-approve
+      
+    - run: terraform -chdir=Infra_CI/env/Homolog apply -auto-approve
+    
+    - run: echo "$(terraform -chdir=Infra_CI/env/Homolog output -raw IP_alb)"
+      id: URL
+      
+    - name: Setup Python
+      uses: actions/setup-python@v2.3.3
+      with:
+        python-version: "3.10"
+        
+    - uses: BSFishy/pip-action@v1
+      with:
+        packages: |
+          locust
+          
+    - run: |
+        echo "from locust import HttpUser, TaskSet, task, between" >> locustfile.py
+        echo "" >> locustfile.py
+        echo "class UserTasks(TaskSet):" >> locustfile.py
+        echo "	@task(1)" >> locustfile.py
+        echo "	def index(self):" >> locustfile.py
+        echo '		self.client.get("/bruno")' >> locustfile.py
+        echo "" >> locustfile.py
+        echo "class WebsiteUser(HttpUser):" >> locustfile.py
+        echo "	tasks = [UserTasks]" >> locustfile.py
+        echo "	wait_time = between(1, 5)" >> locustfile.py
+
+    - name: Roda teste de carga
+      run: sleep 60s ; locust -f locustfile.py --headless -u 10 -r 5 --run-time 60s -H http://${{ steps.URL.outputs.stdout }}
+      
+    - run: terraform -chdir=Infra_CI/env/Homolog destroy -auto-approve
