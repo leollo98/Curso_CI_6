@@ -39,22 +39,11 @@ jobs:
     
     - run: kubectl get svc
     
-    - run: kubectl delete secret dbhost
     - run: kubectl create secret generic dbhost --from-literal=HOST=${{steps.URL.outputs.stdout}}
-    
-    - run: kubectl delete secret dbport
     - run: kubectl create secret generic dbport --from-literal=DBPORT=${{secrets.DBPORT}}
-    
-    - run: kubectl delete secret dbuser
     - run: kubectl create secret generic dbuser --from-literal=USER=${{secrets.DBUSER}}
-    
-    - run: kubectl delete secret dbpassword
     - run: kubectl create secret generic dbpassword --from-literal=PASSWORD=${{secrets.DBPASSWORD}}
-    
-    - run: kubectl delete secret dbname
     - run: kubectl create secret generic dbname --from-literal=DBNAME=${{secrets.DBNAME}}
-    
-    - run: kubectl delete secret port
     - run: kubectl create secret generic port --from-literal=PORT=8000 
     
     - run: kubectl apply -f Infra_CI_Kubernetes/go.yaml
